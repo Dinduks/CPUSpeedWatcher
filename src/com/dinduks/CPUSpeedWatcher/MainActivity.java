@@ -3,6 +3,7 @@ package com.dinduks.CPUSpeedWatcher;
 import android.app.*;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 
 import java.io.FileInputStream;
@@ -35,7 +36,7 @@ public class MainActivity extends Activity {
             frequenciesFiles.put(MAX, new FileInputStream(frequenciesFilesNames.get(MAX)));
 
             for (Map.Entry<String, FileInputStream> entry : frequenciesFiles.entrySet())
-                frequencies.put(entry.getKey(), streamToInt(entry.getValue()) / 1000);
+                frequencies.put(entry.getKey(), streamToFloat(entry.getValue()) / 1000);
 
             String contentText = String.format("Min: %.0f Mhz / Cur: %.0fMhz / Max: %.0fMhz",
                     (frequencies.get(MIN)),
@@ -44,7 +45,8 @@ public class MainActivity extends Activity {
 
             createNotification(
                     new Notification.Builder(this)
-                            .setSmallIcon(R.drawable.notification_icon)
+                            .setSmallIcon(R.drawable.notif_area_icon)
+                            .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.notif_drawer_icon))
                             .setContentTitle("CPU Speed Watcher")
                             .setContentText(contentText)
             );
@@ -70,7 +72,7 @@ public class MainActivity extends Activity {
     }
 
     // From http://stackoverflow.com/a/5445161/604041
-    public static Float streamToInt(java.io.InputStream is) {
+    public static Float streamToFloat(java.io.InputStream is) {
         java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
         return s.hasNext() ? new Float(s.next()) : 0;
     }
