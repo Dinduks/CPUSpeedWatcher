@@ -10,65 +10,63 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
-    private static final int NOTIFICATION_ID = 42;
-    private String CUR = "cur";
-    private String MIN = "min";
-    private String MAX = "max";
-    private HashMap<String, String> frequenciesFilesNames = new HashMap<String, String>() {{
-        this.put(CUR, "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq");
-        this.put(MIN, "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq");
-        this.put(MAX, "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq");
-    }};
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        HashMap<String, FileInputStream> frequenciesFiles = new HashMap<String, FileInputStream>();
-        HashMap<String, Float> frequencies = new HashMap<String, Float>();
+        Intent resultIntent;
+        TaskStackBuilder stackBuilder;
+
+        final PendingIntent resultPendingIntent;
+        final Notification.Builder notificationBuilder;
 
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
 
-        try {
-            frequenciesFiles.put(CUR, new FileInputStream(frequenciesFilesNames.get(CUR)));
-            frequenciesFiles.put(MIN, new FileInputStream(frequenciesFilesNames.get(MIN)));
-            frequenciesFiles.put(MAX, new FileInputStream(frequenciesFilesNames.get(MAX)));
+        resultIntent = new Intent(this, MainActivity.class);
+        stackBuilder = TaskStackBuilder.create(this);
+        stackBuilder.addParentStack(MainActivity.class).addNextIntent(resultIntent);
 
-            for (Map.Entry<String, FileInputStream> entry : frequenciesFiles.entrySet())
-                frequencies.put(entry.getKey(), streamToFloat(entry.getValue()) / 1000);
+        resultPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
 
-            String contentText = String.format("Min: %.0f Mhz / Cur: %.0fMhz / Max: %.0fMhz",
-                    (frequencies.get(MIN)),
-                    (frequencies.get(CUR)),
-                    (frequencies.get(MAX)));
+        notificationBuilder = new Notification.Builder(this)
+                .setSmallIcon(R.drawable.notif_area_icon)
+                .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.notif_drawer_icon))
+                .setContentTitle("CPU Speed Watcher");
 
-            createNotification(
-                    new Notification.Builder(this)
-                            .setSmallIcon(R.drawable.notif_area_icon)
-                            .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.notif_drawer_icon))
-                            .setContentTitle("CPU Speed Watcher")
-                            .setContentText(contentText)
-            );
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+        ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
+        exec.scheduleAtFixedRate(new Runnable() {
+            private Float curFrequency;
+            private Float minFrequency;
+            private Float maxFrequency;
+
+            @Override
+            public void run() {
+                try {
+                    curFrequency = getFrequencyFromResId(R.string.cur_freq_filename);
+                    minFrequency = getFrequencyFromResId(R.string.min_freq_filename);
+                    maxFrequency = getFrequencyFromResId(R.string.max_freq_filename);
+
+                    notificationBuilder.setContentText(String.format("Min: %.0f / Cur: %.0f / Max: %.0f",
+                            minFrequency, curFrequency, maxFrequency));
+
+                    notificationBuilder.setContentIntent(resultPendingIntent);
+                    NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+                    notificationManager.notify(this.hashCode(), notificationBuilder.build());
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
+        }, 0, 1, TimeUnit.SECONDS);
+
+        finish();
     }
 
-    private void createNotification(Notification.Builder mBuilder) {
-        Intent resultIntent = new Intent(this, MainActivity.class);
-
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-
-        stackBuilder.addParentStack(MainActivity.class);
-
-        stackBuilder.addNextIntent(resultIntent);
-        PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        mBuilder.setContentIntent(resultPendingIntent);
-        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-
-        mNotificationManager.notify(NOTIFICATION_ID, mBuilder.build());
+    private Float getFrequencyFromResId(int resId) throws FileNotFoundException {
+        return streamToFloat(new FileInputStream(getString(resId))) / 1000;
     }
 
     // From http://stackoverflow.com/a/5445161/604041
