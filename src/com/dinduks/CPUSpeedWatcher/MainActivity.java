@@ -8,8 +8,6 @@ import android.os.Bundle;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -38,9 +36,9 @@ public class MainActivity extends Activity {
 
         ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
         exec.scheduleAtFixedRate(new Runnable() {
-            private Float curFrequency;
-            private Float minFrequency;
-            private Float maxFrequency;
+            private int curFrequency;
+            private int minFrequency;
+            private int maxFrequency;
 
             @Override
             public void run() {
@@ -49,7 +47,7 @@ public class MainActivity extends Activity {
                     minFrequency = getFrequencyFromResId(R.string.min_freq_filename);
                     maxFrequency = getFrequencyFromResId(R.string.max_freq_filename);
 
-                    notificationBuilder.setContentText(String.format("Min: %.0f / Cur: %.0f / Max: %.0f",
+                    notificationBuilder.setContentText(String.format("Min: %d / Cur: %d / Max: %d",
                             minFrequency, curFrequency, maxFrequency));
 
                     notificationBuilder.setContentIntent(resultPendingIntent);
@@ -65,13 +63,13 @@ public class MainActivity extends Activity {
         finish();
     }
 
-    private Float getFrequencyFromResId(int resId) throws FileNotFoundException {
-        return streamToFloat(new FileInputStream(getString(resId))) / 1000;
+    private int getFrequencyFromResId(int resId) throws FileNotFoundException {
+        return streamToInt(new FileInputStream(getString(resId))) / 1000;
     }
 
-    // From http://stackoverflow.com/a/5445161/604041
-    public static Float streamToFloat(java.io.InputStream is) {
-        java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
-        return s.hasNext() ? new Float(s.next()) : 0;
+    // Inspired from: http://stackoverflow.com/a/5445161/604041
+    public static int streamToInt(java.io.InputStream is) {
+        java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\n");
+        return s.hasNext() ? Integer.parseInt(s.next()) : 0;
     }
 }
